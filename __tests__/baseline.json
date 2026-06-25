@@ -1,0 +1,54 @@
+{
+  "version": "1.1",
+  "createdAt": "2026-06-25T11:11:07.459Z",
+  "results": {
+    "单词样本.csv": {
+      "success": true,
+      "totalQuestions": 3,
+      "sheetCount": 1,
+      "sheetResults": [
+        {
+          "name": "Sheet1",
+          "type": "单词",
+          "questionCount": 3
+        }
+      ]
+    },
+    "试卷样本.csv": {
+      "success": true,
+      "totalQuestions": 4,
+      "sheetCount": 1,
+      "sheetResults": [
+        {
+          "name": "Sheet1",
+          "type": "试卷",
+          "questionCount": 4
+        }
+      ]
+    },
+    "闪卡样本.csv": {
+      "success": true,
+      "totalQuestions": 3,
+      "sheetCount": 1,
+      "sheetResults": [
+        {
+          "name": "Sheet1",
+          "type": "闪卡",
+          "questionCount": 3
+        }
+      ]
+    },
+    "题库样本.csv": {
+      "success": true,
+      "totalQuestions": 3,
+      "sheetCount": 1,
+      "sheetResults": [
+        {
+          "name": "Sheet1",
+          "type": "题库",
+          "questionCount": 3
+        }
+      ]
+    }
+  }
+}

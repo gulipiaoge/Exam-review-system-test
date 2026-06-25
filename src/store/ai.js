@@ -33,6 +33,23 @@ function init() {
   }
 }
 
+// 从云端加载对话（兼容后端API）
+async function loadFromCloud() {
+  try {
+    const res = await api.get('/ai/conversations')
+    if (res.conversations && res.conversations.length > 0) {
+      conversations.value = res.conversations.map(conv => ({
+        ...conv,
+        messages: conv.messages || []
+      }))
+      save() // 保存到localStorage
+    }
+  } catch (e) {
+    console.log('从云端加载对话失败，使用本地数据:', e.message)
+    // 如果失败，继续使用localStorage中的数据（init方法已经加载）
+  }
+}
+
 // 保存对话到localStorage
 function save() {
   try {
@@ -166,6 +183,7 @@ export function useAiStore() {
     loading,
     apiConfig,
     init,
+    loadFromCloud,
     createConversation,
     sendMessage,
     chat, // Bug #6修复：导出chat函数

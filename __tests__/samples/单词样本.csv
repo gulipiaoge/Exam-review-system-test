@@ -1,0 +1,4 @@
+词头,词性,释义,音标,例句
+closure,名词,闭包,/ˈkloʊʒər/,The function forms a closure.
+callback,名词,回调函数,/ˈkɔːlbæk/,Pass a callback function as argument.
+asynchronous,形容词,异步的,/eɪˈsɪŋkrənəs/,Use asynchronous programming.
