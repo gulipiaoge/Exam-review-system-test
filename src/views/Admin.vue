@@ -171,7 +171,7 @@ async function confirmDeleteUser(u) {
   } catch (e) { /* 用户取消 */ }
 }
 
-onMounted(async () => { await loadUsers(); await loadDashboard() })
+onMounted(async () => { await loadUsers(); /* ❌ 移除不存在的 loadDashboard() 调用 */ })
 </script>
 
 <style scoped>

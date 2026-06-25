@@ -13,7 +13,7 @@
       <div class="stat-card" @click="$router.push('/library')">
         <div class="sc-icon" style="background:#ecfdf5;color:#059669">📚</div>
         <span class="sc-label">总题数</span>
-        <span class="sc-value">{{ allQuestions.length.toLocaleString() }}</span>
+        <span class="sc-value">{{ (allQuestions.length || 0).toLocaleString() }}</span>
         <span class="sc-trend up">+24 题新增</span>
       </div>
       <div class="stat-card" @click="$router.push('/wrong')">

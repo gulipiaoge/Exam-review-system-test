@@ -172,8 +172,8 @@ watch(isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     questionStore.init()
     questionStore.fetchQuestions()
-    questionStore.fetchSubjects()
-    questionStore.fetchQuestionTypes()
+    // ❌ 移除不存在的函数调用：fetchSubjects() 和 fetchQuestionTypes()
+    // subjects 和 questionTypes 是计算属性，会自动从 allQuestions 派生
     wrongStore.init()
     examStore.loadRecords()
     aiStore.loadFromCloud()
