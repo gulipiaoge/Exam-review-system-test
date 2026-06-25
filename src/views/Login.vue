@@ -142,11 +142,12 @@ function handleLogin() {
       ElMessage.success('欢迎回来！')
       router.push('/')
     } else {
-      ElMessage.error(res.message || '登录失败，请检查账号和密码')
+      ElMessage.error(res.message || res.error || '登录失败，请检查账号和密码')
     }
     loading.value = false
-  }).catch(() => {
-    ElMessage.error('网络错误，请稍后重试')
+  }).catch((err) => {
+    const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || '网络错误，请稍后重试'
+    ElMessage.error(errorMsg)
     loading.value = false
   })
 }
