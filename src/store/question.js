@@ -9,39 +9,43 @@ const lastDeletedQuestion = ref(null) // Bug #4修复：保存最后删除的题
 
 // 计算属性
 const subjects = computed(() => {
-  const subs = new Set(allQuestions.value.map(q => q.subject).filter(Boolean))
+  const questions = Array.isArray(allQuestions.value) ? allQuestions.value : []
+  const subs = new Set(questions.map(q => q?.subject).filter(Boolean))
   return Array.from(subs).sort()
 })
 
 const chapters = computed(() => {
-  const chs = new Set(allQuestions.value.map(q => q.chapter).filter(Boolean))
+  const questions = Array.isArray(allQuestions.value) ? allQuestions.value : []
+  const chs = new Set(questions.map(q => q?.chapter).filter(Boolean))
   return Array.from(chs).sort()
 })
 
 const questionTypes = computed(() => {
-  const types = new Set(allQuestions.value.map(q => q.type).filter(Boolean))
+  const questions = Array.isArray(allQuestions.value) ? allQuestions.value : []
+  const types = new Set(questions.map(q => q?.type).filter(Boolean))
   return Array.from(types).sort()
 })
 
 // 过滤后的题目
 const filteredQuestions = computed(() => {
-  let result = allQuestions.value
+  const questions = Array.isArray(allQuestions.value) ? allQuestions.value : []
+  let result = questions
   
   if (currentFilters.value.subject) {
-    result = result.filter(q => q.subject === currentFilters.value.subject)
+    result = result.filter(q => q?.subject === currentFilters.value.subject)
   }
   if (currentFilters.value.chapter) {
-    result = result.filter(q => q.chapter === currentFilters.value.chapter)
+    result = result.filter(q => q?.chapter === currentFilters.value.chapter)
   }
   if (currentFilters.value.type) {
-    result = result.filter(q => q.type === currentFilters.value.type)
+    result = result.filter(q => q?.type === currentFilters.value.type)
   }
   if (currentFilters.value.keyword) {
     const kw = currentFilters.value.keyword.toLowerCase()
     result = result.filter(q => 
-      q.question?.toLowerCase().includes(kw) ||
-      q.answer?.toLowerCase().includes(kw) ||
-      q.explanation?.toLowerCase().includes(kw)
+      q?.question?.toLowerCase().includes(kw) ||
+      q?.answer?.toLowerCase().includes(kw) ||
+      q?.explanation?.toLowerCase().includes(kw)
     )
   }
   
@@ -80,10 +84,13 @@ async function fetchQuestions(filters = {}) {
     const query = params.toString()
     const res = await api.get(`/questions${query ? '?' + query : ''}`)
     
-    if (res?.questions) {
+    if (res?.questions && Array.isArray(res.questions)) {
       allQuestions.value = res.questions
       currentFilters.value = filters
       save()
+    } else if (res?.questions) {
+      console.warn('API返回的题目数据不是数组，使用空数组')
+      allQuestions.value = []
     }
   } catch (err) {
     console.error('获取题目失败:', err)
