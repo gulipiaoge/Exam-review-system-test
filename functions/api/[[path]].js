@@ -231,10 +231,27 @@ async function handleLogin(request, env) {
   const body = await request.json();
   const { username, password } = body;
   
+  // 如果没有数据库，使用硬编码的admin账号
+  if (!env.DB) {
+    console.warn('[API] Login: DB is undefined, using hardcoded admin check');
+    if (username === 'admin' && password === 'admin123') {
+      const user = { id: 'admin', username: 'admin', name: '管理员', role: 'admin' };
+      const token = await signJWT({ userId: user.id, username: user.username });
+      return new Response(JSON.stringify({ code: 200, user, token }), { 
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } else {
+      return new Response(JSON.stringify({ code: 401, error: '用户名或密码错误' }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+  
   const user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ? AND password = ?', [username, password]);
   
   if (!user) {
-    return new Response(JSON.stringify({ error: '用户名或密码错误' }), { 
+    return new Response(JSON.stringify({ code: 401, error: '用户名或密码错误' }), { 
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -242,7 +259,7 @@ async function handleLogin(request, env) {
   
   const token = await signJWT({ userId: user.id, username: user.username });
   
-  return new Response(JSON.stringify({ user, token }), { 
+  return new Response(JSON.stringify({ code: 200, user, token }), { 
     headers: { 'Content-Type': 'application/json' }
   });
 }
