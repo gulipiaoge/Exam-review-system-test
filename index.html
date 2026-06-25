@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能备考系统</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="智能备考">
+
+  <!-- KaTeX 本地 CSS（由 Vite 构建时处理，此处保留作为后备） -->
+  <!-- 注意：实际渲染使用 src/main.js 中 import 的 katex/dist/katex.min.css -->
+
+  <!-- 全局防闪现样式：KaTeX 渲染前隐藏公式容器 -->
+  <style>
+    /* 公式容器默认隐藏，渲染完成后由 v-katex 指令设为 visible */
+    [v-katex],
+    .katex-container,
+    .math-content {
+      visibility: hidden;
+    }
+    [v-katex].katex-rendered,
+    .katex-container.rendered,
+    .math-content.rendered {
+      visibility: visible;
+    }
+
+    /* KaTeX 错误样式覆盖 */
+    .katex-error {
+      color: #cc0000;
+      background: #fef2f2;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
