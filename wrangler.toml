@@ -4,14 +4,15 @@
 name = "exam-review-system"
 compatibility_date = "2024-01-01"
 
+# Pages 构建配置
+[pages]
+build_output_dir = "./dist"
+
 # D1 数据库绑定
 [[pages_d1_databases]]
 binding = "DB"
 database_name = "exam-review-db"
 database_id = "exam-review-db"
-
-# 构建配置
-pages_build_output_dir = "./dist"
 
 # 环境变量（如果需要）
 [vars]
