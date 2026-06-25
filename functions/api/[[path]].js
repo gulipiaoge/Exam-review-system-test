@@ -332,9 +332,43 @@ async function handleGetQuestions(request, env) {
     params.push(keywordPattern, keywordPattern, keywordPattern);
   }
   
-  // 计算总数（使用与列表查询相同的条件）
-  const countSql = sql.replace(/SELECT q\.\*, u\.username.*FROM/, 'SELECT COUNT(*) as total FROM');
-  const countResult = await dbQueryOne(env.DB, countSql, params);
+  // 计算总数（使用单独的COUNT查询）
+  let countSql = `SELECT COUNT(*) as total FROM question q WHERE 1=1`;
+  const countParams = [];
+  
+  // 用户过滤
+  if (user) {
+    const filter = userFilter(user);
+    countSql += filter.clause.replace('q.user_id', 'q.user_id').replace('user_id', 'q.user_id');
+    countParams.push(...filter.params);
+  }
+  
+  // 科目过滤
+  if (subject) {
+    countSql += ' AND q.subject = ?';
+    countParams.push(subject);
+  }
+  
+  // 章节过滤
+  if (chapter) {
+    countSql += ' AND q.chapter = ?';
+    countParams.push(chapter);
+  }
+  
+  // 题型过滤
+  if (type) {
+    countSql += ' AND q.type = ?';
+    countParams.push(type);
+  }
+  
+  // 关键词搜索
+  if (keyword && keyword.trim()) {
+    countSql += ' AND (q.question LIKE ? OR q.answer LIKE ? OR q.explanation LIKE ?)';
+    const keywordPattern = '%' + keyword.trim() + '%';
+    countParams.push(keywordPattern, keywordPattern, keywordPattern);
+  }
+  
+  const countResult = await dbQueryOne(env.DB, countSql, countParams);
   const total = countResult?.total || 0;
   
   // 分页
