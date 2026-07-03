@@ -1,5 +1,6 @@
 // Pages Functions - 主API路由处理器
 // 文件路径: functions/api/[[path]].js
+// 最后更新: 2026-07-03 修复admin登录硬编码逻辑
 
 import { signJWT } from '../_lib/jwt.js';
 import { dbQueryOne, dbQueryAll, dbRun, generateId, authUser, userFilter } from '../_lib/db.js';
