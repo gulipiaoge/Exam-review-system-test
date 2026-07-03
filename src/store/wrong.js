@@ -91,9 +91,12 @@ async function fetchWrongQuestions(filters = {}) {
     const query = params.toString()
     const res = await api.get(`/wrong-questions${query ? '?' + query : ''}`)
     
-    if (res?.wrongQuestions) {
+    if (res?.wrongQuestions && Array.isArray(res.wrongQuestions)) {
       wrongQuestions.value = res.wrongQuestions
       save()
+    } else if (res?.wrongQuestions) {
+      console.warn('API返回的错题数据不是数组，使用空数组')
+      wrongQuestions.value = []
     }
   } catch (err) {
     console.error('获取错题失败:', err)

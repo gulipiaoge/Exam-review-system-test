@@ -5,6 +5,27 @@ import 'element-plus/dist/index.css'
 import router from './router'
 import App from './App.vue'
 
+// 全局错误处理器 - 捕获并日志记录运行时错误
+window.addEventListener('error', (event) => {
+  console.error('[全局错误]', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error
+  })
+  
+  // 如果是 themeColors 或 filter 相关错误，提供更多信息
+  if (event.message.includes('themeColors') || event.message.includes('filter')) {
+    console.warn('[提示] 检测到主题或数组处理错误，已添加防御性检查')
+  }
+})
+
+// 全局 Promise 错误处理器
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[未处理的Promise错误]', event.reason)
+})
+
 // ─── KaTeX 全局渲染系统 ──────────────────────────────
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
