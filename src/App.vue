@@ -91,7 +91,7 @@ const wrongStore = useWrongStore()
 const examStore = useExamStore()
 const aiStore = useAiStore()
 
-const isLoggedIn = computed(() => auth.isLoggedIn)
+const isLoggedIn = computed(() => !!localStorage.getItem("auth_token"))
 const user = computed(() => auth.user)
 const isAdmin = computed(() => user.value?.username === 'ksbg')
 const currentPath = computed(() => route.path)

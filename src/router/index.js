@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../store/auth'
 
 const routes = [
   { path: '/login', component: () => import('../views/Login.vue'), meta: { noAuth: true } },
@@ -23,14 +22,22 @@ const router = createRouter({
   routes
 })
 
+// 简单的认证检查：直接读取 localStorage
+function isAuthenticated() {
+  const token = localStorage.getItem('auth_token')
+  console.log('[Router] Checking auth:', !!token)
+  return !!token
+}
+
 router.beforeEach((to, from, next) => {
-  const auth = useAuthStore()
-  // 确保认证状态已初始化
-  if (!auth.isLoggedIn.value && localStorage.getItem('auth_token')) {
-    auth.init()
+  console.log('[Router] Navigating to:', to.path, '| Authenticated:', isAuthenticated())
+  
+  if (to.meta.noAuth || isAuthenticated()) {
+    next()
+  } else {
+    console.log('[Router] Redirecting to /login')
+    next('/login')
   }
-  if (to.meta.noAuth || auth.isLoggedIn.value) next()
-  else next('/login')
 })
 
 export default router
