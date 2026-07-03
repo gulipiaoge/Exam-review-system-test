@@ -20,7 +20,7 @@ function getAuthStore() {
     if (useAuthStore) return useAuthStore()
   } catch(e) { /* ignore */ }
   // fallback: 直接从localStorage读
-  return { token: localStorage.getItem('exam_token') || '' }
+  return { token: localStorage.getItem('auth_token') || '' }
 }
 
 async function request(url, options = {}) {
@@ -31,7 +31,7 @@ async function request(url, options = {}) {
     const authStore = _useAuth()
     authToken = authStore.token || ''
   } catch(e) {
-    authToken = localStorage.getItem('exam_token') || ''
+    authToken = localStorage.getItem('auth_token') || ''
   }
 
   const headers = {
@@ -63,8 +63,8 @@ async function request(url, options = {}) {
         const { useAuthStore: _useAuth2 } = await import('../store/auth.js')
         _useAuth2().logout()
       } catch(e) {
-        localStorage.removeItem('exam_user')
-        localStorage.removeItem('exam_token')
+        localStorage.removeItem('auth_user')
+        localStorage.removeItem('auth_token')
       }
       window.location.href = '/login'
       return data
