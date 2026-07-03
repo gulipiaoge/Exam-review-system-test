@@ -230,38 +230,34 @@ async function handleRegister(request, env) {
 async function handleLogin(request, env) {
   const body = await request.json();
   const { username, password } = body;
-  
-  let user = null;
-  
-  // 尝试从数据库查询用户
+
+  // 优先检查硬编码admin账号（无论数据库是否可用）
+  if (username === 'admin' && password === 'ksbg') {
+    console.log('[API] Login: Hardcoded admin login success');
+    const user = { id: 'admin', username: 'admin', name: '管理员', role: 'admin' };
+    const token = await signJWT({ userId: user.id, username: user.username });
+    return new Response(JSON.stringify({ code: 200, user, token }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // 非admin账号，尝试从数据库查询
   if (env.DB) {
     try {
-      user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ? AND password = ?', [username, password]);
+      const user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ? AND password = ?', [username, password]);
+      if (user) {
+        const token = await signJWT({ userId: user.id, username: user.username });
+        return new Response(JSON.stringify({ code: 200, user, token }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     } catch (e) {
-      console.warn('[API] Login: Database query failed, using hardcoded admin check', e);
+      console.warn('[API] Login: Database query failed', e);
     }
   }
-  
-  // 如果数据库查询失败或用户不存在，使用硬编码的admin账号
-  if (!user && username === 'admin' && password === 'ksbg') {
-    console.warn('[API] Login: Using hardcoded admin account');
-    user = { id: 'admin', username: 'admin', name: '管理员', role: 'admin' };
-    const token = await signJWT({ userId: user.id, username: user.username });
-    return new Response(JSON.stringify({ code: 200, user, token }), { 
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-  
-  if (!user) {
-    return new Response(JSON.stringify({ code: 401, error: '用户名或密码错误' }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-  
-  const token = await signJWT({ userId: user.id, username: user.username });
-  
-  return new Response(JSON.stringify({ code: 200, user, token }), { 
+
+  return new Response(JSON.stringify({ code: 401, error: '用户名或密码错误' }), {
+    status: 401,
     headers: { 'Content-Type': 'application/json' }
   });
 }

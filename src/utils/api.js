@@ -56,17 +56,20 @@ async function request(url, options = {}) {
     const data = await response.json()
     console.log(`[API] 响应 ${fullUrl}:`, typeof data, Array.isArray(data.questions) ? `questions=${data.questions.length}` : data.error || data.code || JSON.stringify(data).slice(0,200))
 
-    // 如果 token 过期或无效，自动登出
+    // 如果 token 过期或无效，自动登出（登录接口除外）
     if (data.code === 401 || (data.error && data.error.includes('未登录'))) {
-      console.warn('[API] Token无效，清除登录状态')
-      try {
-        const { useAuthStore: _useAuth2 } = await import('../store/auth.js')
-        _useAuth2().logout()
-      } catch(e) {
-        localStorage.removeItem('auth_user')
-        localStorage.removeItem('auth_token')
+      const isLoginRequest = url.includes('/auth/login')
+      if (!isLoginRequest) {
+        console.warn('[API] Token无效，清除登录状态')
+        try {
+          const { useAuthStore: _useAuth2 } = await import('../store/auth.js')
+          _useAuth2().logout()
+        } catch(e) {
+          localStorage.removeItem('auth_user')
+          localStorage.removeItem('auth_token')
+        }
+        window.location.href = '/login'
       }
-      window.location.href = '/login'
       return data
     }
 

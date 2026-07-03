@@ -137,12 +137,13 @@ function handleLogin() {
     return
   }
   loading.value = true
-  auth.login(loginForm.username, loginForm.password).then(res => {
-    if (res.code === 200) {
+  auth.login(loginForm.username, loginForm.password).then(user => {
+    // auth.login() 返回用户对象，成功时 user 不为空
+    if (user && user.id) {
       ElMessage.success('欢迎回来！')
       router.push('/')
     } else {
-      ElMessage.error(res.message || res.error || '登录失败，请检查账号和密码')
+      ElMessage.error('登录失败，请检查账号和密码')
     }
     loading.value = false
   }).catch((err) => {
