@@ -1,9 +1,9 @@
 <template>
   <div class="app-container">
-    <!-- 未登录时（使用登录页面自己的布局） -->
-    <router-view v-if="!isLoggedIn" />
+    <!-- 未登录：只渲染登录页 -->
+    <router-view v-if="!auth.isLoggedIn" />
 
-    <!-- 已登录后的主界面 - 侧边栏+顶栏布局 -->
+    <!-- 已登录：侧边栏 + 顶栏布局 -->
     <template v-else>
       <div class="app-layout">
         <!-- ===== 侧边栏 ===== -->
@@ -29,7 +29,6 @@
               <span>{{ item.label }}</span>
             </a>
           </nav>
-          <!-- 手机端遮罩 -->
           <div class="sidebar-overlay" @click="sidebarOpen = false"></div>
         </aside>
 
@@ -50,7 +49,7 @@
                 {{ isDark ? '☀️' : '🌙' }}
               </button>
               <el-dropdown trigger="click" @command="handleUserCommand">
-                <div class="user-avatar-small">{{ user.username?.charAt(0)?.toUpperCase() || '?' }}</div>
+                <div class="user-avatar-small">{{ auth.user?.username?.charAt(0)?.toUpperCase() || '?' }}</div>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="logout"><span style="color:#ef4444">退出登录</span></el-dropdown-item>
@@ -91,9 +90,10 @@ const wrongStore = useWrongStore()
 const examStore = useExamStore()
 const aiStore = useAiStore()
 
-const isLoggedIn = computed(() => !!localStorage.getItem("auth_token"))
-const user = computed(() => auth.user)
-const isAdmin = computed(() => user.value?.username === 'ksbg')
+// ✅ 直接使用 auth.isLoggedIn（响应式 computed）
+const isLoggedIn = computed(() => auth.isLoggedIn)
+
+const isAdmin = computed(() => auth.user?.username === 'admin')
 const currentPath = computed(() => route.path)
 const sidebarOpen = ref(false)
 const searchText = ref('')
@@ -125,7 +125,6 @@ function navigate(path) {
 
 function doSearch() {
   if (!searchText.value.trim()) return
-  // 跳转到库中心并传递搜索关键词
   router.push(`/library?search=${encodeURIComponent(searchText.value)}`)
 }
 
@@ -133,7 +132,7 @@ const mainNavItems = computed(() => {
   const items = [
     { path: '/', icon: '🏠', label: '首页' },
     { path: '/library', icon: '📖', label: '库中心' },
-    { path: '/practice', icon: '📝', label: '在线练习' },
+    { path: '/practice', icon: '✏️', label: '在线练习' },
     { path: '/exam', icon: '🎯', label: '模拟考试' },
     { path: '/wrong', icon: '❌', label: '错题本', badge: wrongStore.wrongQuestions.length || null },
   ]
@@ -144,7 +143,7 @@ const toolNavItems = computed(() => {
   const items = [
     { path: '/ai-chat', icon: '🤖', label: 'AI 助手' },
     { path: '/stats', icon: '📊', label: '学习统计' },
-    { path: '/study-guide', icon: '📋', label: '复习指导' },
+    { path: '/study-guide', icon: '🗺️', label: '复习指导' },
   ]
   if (isAdmin.value) {
     items.push({ path: '/admin', icon: '⚙️', label: '管理员' })
@@ -155,6 +154,9 @@ const toolNavItems = computed(() => {
 const isDark = ref(false)
 
 onMounted(() => {
+  // ✅ 初始化认证状态（从 localStorage 恢复 token）
+  auth.init()
+  
   const saved = localStorage.getItem('exam_dark_mode')
   if (saved === 'true') {
     isDark.value = true
@@ -168,12 +170,11 @@ function toggleDark() {
   localStorage.setItem('exam_dark_mode', isDark.value)
 }
 
-watch(isLoggedIn, (loggedIn) => {
+// ✅ 登录状态变化时，加载数据
+watch(() => auth.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     questionStore.init()
     questionStore.fetchQuestions()
-    // ❌ 移除不存在的函数调用：fetchSubjects() 和 fetchQuestionTypes()
-    // subjects 和 questionTypes 是计算属性，会自动从 allQuestions 派生
     wrongStore.init()
     examStore.loadRecords()
     aiStore.loadFromCloud()
@@ -245,7 +246,6 @@ function logout() {
   --text-primary: var(--gray-800);
   --text-secondary: var(--gray-500);
 }
-
 /* ===== 2. 暗色模式 ===== */
 .dark {
   --bg-primary: #0f172a;
