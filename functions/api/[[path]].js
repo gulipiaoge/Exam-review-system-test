@@ -243,7 +243,7 @@ async function handleLogin(request, env) {
   }
   
   // 如果数据库查询失败或用户不存在，使用硬编码的admin账号
-  if (!user && username === 'admin' && password === 'admin123') {
+  if (!user && username === 'admin' && password === 'ksbg') {
     console.warn('[API] Login: Using hardcoded admin account');
     user = { id: 'admin', username: 'admin', name: '管理员', role: 'admin' };
     const token = await signJWT({ userId: user.id, username: user.username });
