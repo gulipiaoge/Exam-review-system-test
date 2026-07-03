@@ -1,10 +1,13 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '../utils/api.js'
 
 // 响应式状态
 const user = ref(null)
 const token = ref(null)
 const loading = ref(false)
+
+// 计算属性：是否已登录
+const isLoggedIn = computed(() => !!token.value)
 
 // 初始化
 function init() {
@@ -99,21 +102,19 @@ function logout() {
   localStorage.removeItem('auth_user')
 }
 
-// 检查是否已登录
-function isLoggedIn() {
-  return !!token.value
-}
-
 // 导出store
 export function useAuthStore() {
   return {
     user,
     token,
     loading,
+    isLoggedIn,
     init,
     login,
     register,
-    logout,
-    isLoggedIn
+    logout
   }
 }
+
+// 模块初始化：从 localStorage 加载认证状态
+init()

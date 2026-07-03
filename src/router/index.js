@@ -25,7 +25,11 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
-  if (to.meta.noAuth || auth.isLoggedIn) next()
+  // 确保认证状态已初始化
+  if (!auth.isLoggedIn.value && localStorage.getItem('auth_token')) {
+    auth.init()
+  }
+  if (to.meta.noAuth || auth.isLoggedIn.value) next()
   else next('/login')
 })
 
