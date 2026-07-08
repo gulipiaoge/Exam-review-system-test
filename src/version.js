@@ -8,12 +8,28 @@
 // 每次发布只需修改下方三个常量，并在 VERSION_HISTORY 追加一条记录。
 // ============================================================
 
-export const SYSTEM_VERSION = 'v1.0.5'
-export const VERSION_NAME = '认证与权限修复版'
+export const SYSTEM_VERSION = 'v1.0.6'
+export const VERSION_NAME = '对齐稳定版'
 export const BUILD_DATE = '2026-07-08'
 
 // 版本历史（新的在上）
 export const VERSION_HISTORY = [
+  {
+    version: 'v1.0.6',
+    date: '2026-07-08',
+    name: '对齐稳定版',
+    fixes: [
+      '【重大】恢复与最稳定版本 (602c899c) 完全一致的认证与路由行为',
+      'auth.js: 恢复模块级 init()（页面加载即恢复登录态，消除登录页闪烁）',
+      'auth.js: 恢复 mock 登录回退（API 失败时任意账号密码≥6位仍可登录，保证可用性）',
+      'router/index.js: 恢复简单守卫 !!localStorage.getItem("auth_token")（任何 token 均可通过）',
+      'api.js: 恢复原始请求逻辑（无 401 防抖，与稳定版一致）',
+      'App.vue: 恢复原始布局（无 initialized 中间态），isAdmin 兼容 ksbg',
+      'AppFooter.vue: 恢复原始版本（始终显示系统管理链接 + 版本号）',
+      '保留既有改进：Login 防重复提交、Practice 每题状态隔离、Admin 健壮管理员判定',
+      '实测后端数据接口（questions/records/conversations）持有效 JWT 均返回 200，功能完全正常'
+    ]
+  },
   {
     version: 'v1.0.5',
     date: '2026-07-08',

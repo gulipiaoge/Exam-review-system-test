@@ -2,27 +2,31 @@
 
 // 自动检测 API 基础地址
 function getBaseUrl() {
+  // 如果是从 Cloudflare Pages 访问，使用同一个域名的 /api 路径
+  // Pages Functions 会自动处理 /api/* 路由
   if (window.location.hostname !== 'localhost') {
     return '/api'
   }
+  // 本地开发时使用 localhost:3000
   return 'http://localhost:3000/api'
 }
 
 const BASE_URL = getBaseUrl()
 
-// ── 401 全局防抖：多个并发请求同时收到"认证失败类"401 时，只执行一次登出跳转 ──
-let _handling401 = false
-
-// 判定某个 URL 的 401 是否属于"认证失效"（应触发登出）还是"数据接口异常"（仅返回错误）
-function isAuthCriticalUrl(url) {
-  // /auth/* 路径的 401 = token 确实无效 → 触发登出
-  // 其他路径（/questions、/exam/*、/ai/* 等）的 401 = 该接口暂时不可用，不杀会话
-  return url.startsWith('/auth/') || url === '/auth/me'
+// 延迟导入避免循环依赖和初始化顺序问题
+function getAuthStore() {
+  try {
+    const { useAuthStore } = require('../store/auth') || {}
+    if (useAuthStore) return useAuthStore()
+  } catch(e) { /* ignore */ }
+  // fallback: 直接从localStorage读
+  return { token: localStorage.getItem('auth_token') || '' }
 }
 
 async function request(url, options = {}) {
   let authToken = ''
   try {
+    // 动态import避免循环依赖
     const { useAuthStore: _useAuth } = await import('../store/auth.js')
     const authStore = _useAuth()
     authToken = authStore.token || ''
@@ -35,6 +39,7 @@ async function request(url, options = {}) {
     ...options.headers
   }
 
+  // 添加 token 到请求头
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`
   }
@@ -51,19 +56,11 @@ async function request(url, options = {}) {
     const data = await response.json()
     console.log(`[API] 响应 ${fullUrl}:`, typeof data, Array.isArray(data.questions) ? `questions=${data.questions.length}` : data.error || data.code || JSON.stringify(data).slice(0,200))
 
-    // ── 401 处理（区分认证接口 vs 数据接口）──
+    // 如果 token 过期或无效，自动登出（登录接口除外）
     if (data.code === 401 || (data.error && data.error.includes('未登录'))) {
-      // 登录接口本身的 401（密码错等）→ 绝不触发登出
       const isLoginRequest = url.includes('/auth/login')
-      if (isLoginRequest) {
-        return data
-      }
-
-      // 仅认证关键接口（/auth/*）的 401 才触发登出跳转
-      // 数据接口（/exam/*、/ai/*、/questions 等）返回 401 时只打日志、不杀会话
-      if (isAuthCriticalUrl(url) && !_handling401) {
-        _handling401 = true
-        console.warn('[API] 认证接口返回401，清除登录状态（防抖已激活）:', fullUrl)
+      if (!isLoginRequest) {
+        console.warn('[API] Token无效，清除登录状态')
         try {
           const { useAuthStore: _useAuth2 } = await import('../store/auth.js')
           _useAuth2().logout()
@@ -71,10 +68,7 @@ async function request(url, options = {}) {
           localStorage.removeItem('auth_user')
           localStorage.removeItem('auth_token')
         }
-        window.location.replace('/login')
-      } else if (!isAuthCriticalUrl(url)) {
-        // 数据接口 401：仅警告，不破坏会话
-        console.warn('[API] 数据接口返回401（不触发登出）:', fullUrl, data.error)
+        window.location.href = '/login'
       }
       return data
     }
@@ -82,6 +76,7 @@ async function request(url, options = {}) {
     return data
   } catch (error) {
     console.warn('[API] 请求失败:', url, error.message)
+    // 返回空结果而不是抛出异常，让页面可以继续渲染
     return { code: 0, message: '网络连接失败', data: null }
   }
 }
@@ -104,11 +99,6 @@ export default {
   },
   delete(url) {
     return request(url, { method: 'DELETE' })
-  },
-
-  // 登录成功后重置 401 防抖标志（供 auth.login 调用）
-  reset401Guard() {
-    _handling401 = false
   },
 
   // 检查后端是否可用

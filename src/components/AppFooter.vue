@@ -3,10 +3,9 @@
     <div class="footer-content">
       <span class="footer-text">智能备考系统 © 2026</span>
       <span class="footer-divider">|</span>
-      <span class="footer-version">版本 {{ version }}</span>
-      <span class="footer-version-name">{{ versionName }}</span>
-      <span v-if="isAdmin" class="footer-divider">|</span>
-      <span v-if="isAdmin" class="footer-links">
+      <span class="footer-version">版本：{{ version }}</span>
+      <span class="footer-divider">|</span>
+      <span class="footer-links">
         <router-link to="/admin">系统管理</router-link>
       </span>
     </div>
@@ -14,18 +13,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { SYSTEM_VERSION, VERSION_NAME } from '../version.js';
-import { useAuthStore } from '../store/auth';
-
+import { ref } from 'vue';
+import { SYSTEM_VERSION } from '../version.js';
 const version = ref(SYSTEM_VERSION);
-const versionName = ref(VERSION_NAME);
-const auth = useAuthStore();
-
-const isAdmin = computed(() => {
-  const u = auth.user;
-  return u?.role === 'admin' || u?.username === 'ksbg';
-});
 </script>
 
 <style scoped>
@@ -50,14 +40,8 @@ const isAdmin = computed(() => {
 }
 
 .footer-version {
-  font-weight: 700;
+  font-weight: 600;
   color: #10b981;
-  letter-spacing: 0.3px;
-}
-
-.footer-version-name {
-  color: #9ca3af;
-  font-size: 12px;
 }
 
 .footer-links a {
