@@ -56,101 +56,21 @@ function sanitizeObject(obj) {
   return sanitized;
 }
 
-// ============ 密码安全：PBKDF2(SHA-256) + Web Crypto ============
-const PBKDF2_ITERATIONS = 100000;
-
-function bufToHex(buf) {
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-function hexToBuf(hex) {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-  return bytes;
-}
-
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-    keyMaterial, 256
-  );
-  return `pbkdf2$${bufToHex(salt)}$${bufToHex(new Uint8Array(bits))}`;
-}
-
-async function verifyPassword(password, stored) {
-  if (!stored) return false;
-  // 兼容历史明文密码；首次登录成功时会透明升级为哈希（见 handleLogin）
-  if (!stored.startsWith('pbkdf2$')) return password === stored;
-  const parts = stored.split('$');
-  if (parts.length !== 3) return false;
-  const salt = hexToBuf(parts[1]);
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-    keyMaterial, 256
-  );
-  return bufToHex(new Uint8Array(bits)) === parts[2];
-}
-
-// 去除用户对象中的敏感字段（password）
-function publicUser(u) {
-  if (!u) return u;
-  const { password, ...rest } = u;
-  return rest;
-}
-
-// 统一 JSON 响应（强制 UTF-8）
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' }
-  });
-}
-
-// 健壮解析请求体（UTF-8）
-async function parseJsonBody(request) {
-  const text = await request.text();
-  if (!text) return {};
-  return JSON.parse(text);
-}
-
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname.replace('/api', '') || '/';
   
-  // 安全响应头
-  const securityHeaders = {
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'X-Frame-Options': 'DENY',
-    'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
-  };
-
-  // CORS：从 * 收紧为同源/白名单，避免任意第三方站点调用
-  const origin = request.headers.get('Origin');
-  const isAllowedOrigin = origin && (
-    origin === 'https://exam-review-system.pages.dev' ||
-    origin.startsWith('http://localhost') ||
-    origin.startsWith('http://127.0.0.1')
-  );
+  // CORS头部
   const corsHeaders = {
-    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : 'https://exam-review-system.pages.dev',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
   };
   
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: { ...corsHeaders, ...securityHeaders } });
+    return new Response(null, { headers: corsHeaders });
   }
   
   try {
@@ -246,9 +166,6 @@ export async function onRequest(context) {
       response = await handleGenerateStudyGuide(request, env);
     } else if (path === '/ai/parse-exam-request' && request.method === 'POST') {
       response = await handleParseExamRequest(request, env);
-    } else if (path === '/ai/chat' && request.method === 'POST') {
-      // AI 答疑后端尚未接入模型：明确返回 501，避免前端误以为 404 不可用
-      response = json({ error: 'AI 答疑功能暂未配置服务端模型，敬请期待' }, 501);
     } else {
       response = new Response(JSON.stringify({ error: 'Not found' }), { 
         status: 404,
@@ -256,18 +173,11 @@ export async function onRequest(context) {
       });
     }
     
-    // 注入 CORS 与安全响应头
+    // 添加CORS头部
     Object.entries(corsHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    // 确保 JSON 响应带 UTF-8 字符集
-    if (response.headers.get('Content-Type')?.includes('application/json')) {
-      response.headers.set('Content-Type', 'application/json; charset=utf-8');
-    }
-
+    
     return response;
   } catch (error) {
     console.error('API Error:', error);
@@ -276,87 +186,81 @@ export async function onRequest(context) {
       message: error.message 
     }), { 
       status: 500,
-      headers: { ...corsHeaders, ...securityHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 }
 
-// 注册（密码哈希存储；默认关闭公开注册，可用环境变量 OPEN_REGISTER=1 开启）
+// 注册
 async function handleRegister(request, env) {
-  if (env.OPEN_REGISTER !== '1') {
-    return json({ error: '公开注册已关闭，请联系管理员开通账号' }, 403);
-  }
-  const body = await parseJsonBody(request);
+  const body = await request.json();
   const { username, password, name } = body;
   
   if (!username || !password) {
-    return json({ error: '用户名和密码必填' }, 400);
-  }
-  
-  if (!env.DB) {
-    return json({ error: '注册暂时不可用' }, 503);
+    return new Response(JSON.stringify({ error: '用户名和密码必填' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   
   // 检查用户是否存在
   const existing = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ?', [username]);
   if (existing) {
-    return json({ error: '该账号ID已被注册，请换一个试试' }, 409);
+    return new Response(JSON.stringify({ error: '该账号ID已被注册，请换一个试试' }), { 
+      status: 409,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   
-  // 创建用户（密码以 PBKDF2 哈希存储，绝不存明文）
+  // 创建用户
   const userId = generateId();
-  const hashed = await hashPassword(password);
   await dbRun(
     env.DB,
     'INSERT INTO user (id, username, password, name, role) VALUES (?, ?, ?, ?, ?)',
-    [userId, username, hashed, name || username, 'student']
+    [userId, username, password, name || username, 'student']
   );
   
   const user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE id = ?', [userId]);
   
-  return json({ user: publicUser(user) });
+  return new Response(JSON.stringify({ user }), { 
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
-// 登录（已移除硬编码后门；密码哈希校验；JWT 带过期时间）
+// 登录
 async function handleLogin(request, env) {
-  const body = await parseJsonBody(request);
+  const body = await request.json();
   const { username, password } = body;
 
-  if (!username || !password) {
-    return json({ code: 400, error: '用户名和密码必填' }, 400);
+  // 优先检查硬编码管理员账号 ksbg（无论数据库是否可用）
+  if (username === 'ksbg' && password === 'ksbg') {
+    console.log('[API] Login: Hardcoded admin login success');
+    const user = { id: 'ksbg', username: 'ksbg', name: '管理员', role: 'admin' };
+    const token = await signJWT({ userId: user.id, username: user.username });
+    return new Response(JSON.stringify({ code: 200, user, token }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  if (!env.DB) {
-    return json({ code: 500, error: '服务暂时不可用' }, 500);
-  }
-
-  const user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ?', [username]);
-  if (!user) {
-    return json({ code: 401, error: '用户名或密码错误' }, 401);
-  }
-
-  const ok = await verifyPassword(password, user.password);
-  if (!ok) {
-    return json({ code: 401, error: '用户名或密码错误' }, 401);
-  }
-
-  // 透明升级：历史明文密码在首次成功登录时改写为哈希
-  if (user.password && !user.password.startsWith('pbkdf2$')) {
+  // 非admin账号，尝试从数据库查询
+  if (env.DB) {
     try {
-      await dbRun(env.DB, 'UPDATE user SET password = ? WHERE id = ?', [await hashPassword(password), user.id]);
+      const user = await dbQueryOne(env.DB, 'SELECT * FROM user WHERE username = ? AND password = ?', [username, password]);
+      if (user) {
+        const token = await signJWT({ userId: user.id, username: user.username });
+        return new Response(JSON.stringify({ code: 200, user, token }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     } catch (e) {
-      console.warn('[API] 密码升级失败（不影响本次登录）', e);
+      console.warn('[API] Login: Database query failed', e);
     }
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const token = await signJWT({
-    userId: user.id,
-    username: user.username,
-    iat: now,
-    exp: now + 7 * 24 * 3600
+  return new Response(JSON.stringify({ code: 401, error: '用户名或密码错误' }), {
+    status: 401,
+    headers: { 'Content-Type': 'application/json' }
   });
-  return json({ code: 200, user: publicUser(user), token });
 }
 
 // 获取当前用户
@@ -364,10 +268,15 @@ async function handleGetMe(request, env) {
   const user = await authUser(env.DB, request);
   
   if (!user) {
-    return json({ error: '未登录' }, 401);
+    return new Response(JSON.stringify({ error: '未登录' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   
-  return json({ user: publicUser(user) });
+  return new Response(JSON.stringify({ user }), { 
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 // 获取题目列表（支持分页和搜索）
@@ -717,18 +626,12 @@ async function handleSubmitExam(request, env) {
     });
   }
   
-  const body = await parseJsonBody(request);
+  const body = await request.json();
   const { subject, chapter, answers, startTime } = body;
-
-  if (!Array.isArray(answers)) {
-    return json({ error: '提交数据无效' }, 400);
-  }
-
+  
   const recordId = generateId();
   const endTime = Date.now();
-  // 防御：startTime 缺失/非法时按 0 分钟计，避免 D1_TYPE_ERROR(undefined/NaN)
-  const start = (typeof startTime === 'number' && startTime > 0) ? startTime : endTime;
-  const duration = Math.max(0, Math.round((endTime - start) / 1000 / 60)); // 分钟
+  const duration = Math.round((endTime - startTime) / 1000 / 60); // 分钟
   
   // 获取题目并计算分数
   let correctCount = 0;

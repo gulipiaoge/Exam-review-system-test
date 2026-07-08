@@ -59,7 +59,7 @@
                   <span class="uc-name">{{ u.name || u.username }}</span>
                 </div>
               </td>
-              <td><span :class="['role-tag', (u.role === 'admin' || u.username === 'ksbg') ? 'is-admin' : 'is-user']">{{ (u.role === 'admin' || u.username === 'ksbg') ? '管理员' : '普通用户' }}</span></td>
+              <td><span :class="['role-tag', u.username === 'ksbg' ? 'is-admin' : 'is-user']">{{ u.username === 'ksbg' ? '管理员' : '普通用户' }}</span></td>
               <td>{{ u.practice_count || 0 }}</td>
               <td>{{ u.exam_count || 0 }}</td>
               <td>{{ formatDate(u.created_at || u.registered_at) }}</td>

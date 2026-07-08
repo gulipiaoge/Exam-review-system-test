@@ -93,7 +93,7 @@ const aiStore = useAiStore()
 // ✅ 直接使用 auth.isLoggedIn（响应式 computed）
 const isLoggedIn = computed(() => auth.isLoggedIn)
 
-const isAdmin = computed(() => auth.user?.role === 'admin' || auth.user?.username === 'ksbg')
+const isAdmin = computed(() => auth.user?.username === 'ksbg')
 const currentPath = computed(() => route.path)
 const sidebarOpen = ref(false)
 const searchText = ref('')

