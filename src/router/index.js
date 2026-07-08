@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   { path: '/login', component: () => import('../views/Login.vue'), meta: { noAuth: true } },
@@ -24,20 +25,30 @@ const router = createRouter({
 
 // 简单的认证检查：直接读取 localStorage
 function isAuthenticated() {
-  const token = localStorage.getItem('auth_token')
-  console.log('[Router] Checking auth:', !!token)
-  return !!token
+  return !!localStorage.getItem('auth_token')
+}
+
+// 管理员判定：优先以 role 字段为准，兼容历史管理员账号 ksbg
+function isAdminUser() {
+  try {
+    const raw = localStorage.getItem('auth_user')
+    if (!raw) return false
+    const u = JSON.parse(raw)
+    return u?.role === 'admin' || u?.username === 'ksbg'
+  } catch {
+    return false
+  }
 }
 
 router.beforeEach((to, from, next) => {
-  console.log('[Router] Navigating to:', to.path, '| Authenticated:', isAuthenticated())
-  
-  if (to.meta.noAuth || isAuthenticated()) {
-    next()
-  } else {
-    console.log('[Router] Redirecting to /login')
-    next('/login')
+  if (to.meta.noAuth) return next()
+  if (!isAuthenticated()) return next('/login')
+  // 管理面板仅对管理员开放
+  if (to.path.startsWith('/admin') && !isAdminUser()) {
+    ElMessage.error('无权限访问管理面板')
+    return next('/')
   }
+  next()
 })
 
 export default router

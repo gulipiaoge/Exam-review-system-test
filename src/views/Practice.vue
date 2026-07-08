@@ -36,7 +36,7 @@
             <label class="form-label">筛选题型</label>
             <div class="type-checkboxes">
               <label
-                v-for="t in availableQuestionTypes"
+                v-for="t in visibleQuestionTypes"
                 :key="t.name"
                 class="type-checkbox"
                 :class="{ active: config.types.includes(t.name) }"
@@ -161,14 +161,14 @@
 
           <!-- 提交按钮 -->
           <div class="answer-actions">
-            <button v-if="!showResult" class="btn-submit-answer" @click="checkAnswer">提交答案</button>
+            <button v-if="!currentEntry.submitted" class="btn-submit-answer" @click="checkAnswer">提交答案</button>
           </div>
 
           <!-- 结果区域 -->
-          <div v-if="showResult" class="result-area">
-            <div class="result-banner" :class="isCorrect ? 'correct' : 'wrong'">
-              <span class="result-icon">{{ isCorrect ? '✅' : '❌' }}</span>
-              <span class="result-text">{{ isCorrect ? '回答正确' : '回答错误' }}</span>
+          <div v-if="currentEntry.submitted" class="result-area">
+            <div class="result-banner" :class="currentEntry.isCorrect ? 'correct' : 'wrong'">
+              <span class="result-icon">{{ currentEntry.isCorrect ? '✅' : '❌' }}</span>
+              <span class="result-text">{{ currentEntry.isCorrect ? '回答正确' : '回答错误' }}</span>
             </div>
             <div class="answer-reference">
               <p class="ref-title">参考答案：</p>
@@ -278,11 +278,22 @@ const practiceStarted = ref(false)
 const practiceFinished = ref(false)
 const questions = ref([])
 const currentIndex = ref(0)
-const myAnswer = ref('')
-const showResult = ref(false)
-const isCorrect = ref(null)
 const elapsedTime = ref(0)
 let timer = null
+
+// 每道题独立的状态：答案 / 是否已提交 / 是否正确（避免答案状态跨题串扰）
+const userAnswers = ref([])
+
+const currentEntry = computed(() => userAnswers.value[currentIndex.value] || { answer: '', submitted: false, isCorrect: null })
+
+// myAnswer 作为当前题答案的代理，读写都落到 currentEntry，保证状态隔离
+const myAnswer = computed({
+  get: () => currentEntry.value?.answer || '',
+  set: (v) => {
+    const e = userAnswers.value[currentIndex.value]
+    if (e) e.answer = v
+  }
+})
 
 const config = ref({
   subject: '',
@@ -293,6 +304,12 @@ const config = ref({
 
 const subjects = computed(() => qs.subjects)
 const availableQuestionTypes = computed(() => qs.questionTypes)
+
+// 隐藏当前科目下题量为 0 的题型
+const visibleQuestionTypes = computed(() => {
+  const vis = qs.questionTypes.filter(t => (typeAvailability.value[t.name] || 0) > 0)
+  return vis.length > 0 ? vis : qs.questionTypes
+})
 
 const typeAvailability = computed(() => {
   const avail = {}
@@ -316,8 +333,9 @@ const filteredCount = computed(() => {
 
 const currentQuestion = computed(() => questions.value[currentIndex.value])
 
-const correctCount = ref(0)
-const wrongCount = ref(0)
+// 正确/错误数由已提交的每题结果派生，避免重复计数
+const correctCount = computed(() => userAnswers.value.filter(a => a.submitted && a.isCorrect).length)
+const wrongCount = computed(() => userAnswers.value.filter(a => a.submitted && !a.isCorrect).length)
 const correctRate = computed(() => {
   if (questions.value.length === 0) return 0
   return Math.round((correctCount.value / questions.value.length) * 100)
@@ -355,18 +373,15 @@ function startPractice() {
   }
 
   questions.value = list
-  userAnswers.value = new Array(list.length).fill('')
+  userAnswers.value = list.map(() => ({ answer: '', submitted: false, isCorrect: null }))
   currentIndex.value = 0
-  myAnswer.value = ''
-  showResult.value = false
-  isCorrect.value = null
   practiceStarted.value = true
   elapsedTime.value = 0
   timer = setInterval(() => { elapsedTime.value++ }, 1000)
 }
 
 function isOptionSelected(label) {
-  const ans = userAnswers.value[currentIndex.value] || ''
+  const ans = currentEntry.value?.answer || ''
   if (currentQuestion.value?.type === '多选') {
     return ans.includes(label)
   }
@@ -382,36 +397,29 @@ function selectOption(label) {
   } else {
     myAnswer.value = label
   }
-  // 保存到用户答案数组
-  userAnswers.value[currentIndex.value] = myAnswer.value
 }
 
 function checkAnswer() {
-  if (!myAnswer.value) {
+  const entry = currentEntry.value
+  if (!entry || !entry.answer) {
     ElMessage.warning('请先选择答案')
     return
   }
 
-  showResult.value = true
-
   // 判题逻辑
   const correct = currentQuestion.value.answer
+  let ok
   if (currentQuestion.value.type === '多选') {
-    const mySorted = (myAnswer.value || '').split('').filter(c => /[A-D]/i.test(c)).map(c => c.toUpperCase()).sort().join('')
-    const correctSorted = (correct || '').split('').filter(c => /[A-D]/i.test(c)).map(c => c.toUpperCase()).sort().join('')
-    isCorrect.value = mySorted === correctSorted
+    const norm = (a) => (a || '').split('').filter(c => /[A-D]/i.test(c)).map(c => c.toUpperCase()).sort().join('')
+    ok = norm(entry.answer) === norm(correct)
   } else {
-    isCorrect.value = myAnswer.value === correct
+    ok = entry.answer === correct
   }
+  entry.submitted = true
+  entry.isCorrect = ok
 
-  // 保存到用户答案数组
-  userAnswers.value[currentIndex.value] = myAnswer.value
-
-  if (isCorrect.value) {
-    correctCount.value++
-  } else {
-    wrongCount.value++
-    ws.add(currentQuestion.value.id, myAnswer.value, currentQuestion.value)
+  if (!ok) {
+    ws.add(currentQuestion.value.id, entry.answer, currentQuestion.value)
   }
 }
 
@@ -422,20 +430,13 @@ function finishPractice() {
 
 function restartPractice() {
   currentIndex.value = 0
-  myAnswer.value = ''
-  showResult.value = false
-  isCorrect.value = null
-  correctCount.value = 0
-  wrongCount.value = 0
   practiceFinished.value = false
   userAnswers.value = []
   startPractice()
 }
 
 function confirmExit() {
-  practiceStarted.value = false
-  practiceFinished.value = false
-  if (timer) clearInterval(timer)
+  finishPractice()
 }
 
 function toggleMark() {
@@ -459,18 +460,13 @@ function getTypeColor(typeName) {
   return t?.color || '#10b981'
 }
 
-const userAnswers = ref([])
-
-// 题目切换时加载答案
-watch(currentIndex, (idx) => {
-  myAnswer.value = userAnswers.value[idx] || ''
-  showResult.value = false
-  isCorrect.value = null
-})
+// 题目切换时无需手动重置状态：每题结果已隔离保存在 userAnswers[currentIndex] 中
 
 function getAnswerCardClass(idx) {
   if (idx === currentIndex.value) return 'current'
-  if (userAnswers.value[idx]) return 'answered'
+  const e = userAnswers.value[idx]
+  if (e?.submitted) return e.isCorrect ? 'correct' : 'wrong'
+  if (e?.answer) return 'answered'
   return 'unanswered'
 }
 
@@ -1168,6 +1164,16 @@ onUnmounted(() => {
 .card-cell.answered {
   background: #d1fae5;
   color: #065f46;
+}
+
+.card-cell.correct {
+  background: #a7f3d0;
+  color: #065f46;
+}
+
+.card-cell.wrong {
+  background: #fecaca;
+  color: #991b1b;
 }
 
 .card-legend {
