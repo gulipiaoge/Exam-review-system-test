@@ -9,19 +9,41 @@ const loading = ref(false)
 // 计算属性：是否已登录
 const isLoggedIn = computed(() => !!token.value)
 
+// 解析 JWT 中的 exp（单位：秒）。解析失败返回 null（保守地视为“无过期信息”）。
+function getTokenExp(token) {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const raw = atob(b64)
+    const m = raw.match(/"exp"\s*:\s*(\d+)/)
+    return m ? parseInt(m[1], 10) : null
+  } catch {
+    return null
+  }
+}
+
 // 初始化
 function init() {
   const savedToken = localStorage.getItem('auth_token')
   const savedUser = localStorage.getItem('auth_user')
-  
+
   if (savedToken) {
-    token.value = savedToken
+    const exp = getTokenExp(savedToken)
+    // 仅当能确认已过期时才清理，避免以“已登录”态短暂闪现后消失（未登录闪退）
+    if (exp !== null && exp * 1000 <= Date.now()) {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_user')
+    } else {
+      token.value = savedToken
+    }
   }
-  if (savedUser) {
+  if (savedUser && token.value) {
     try {
       user.value = JSON.parse(savedUser)
     } catch (e) {
       console.error('加载用户信息失败:', e)
+      localStorage.removeItem('auth_user')
     }
   }
 }

@@ -170,7 +170,7 @@ function toggleDark() {
   localStorage.setItem('exam_dark_mode', isDark.value)
 }
 
-// ✅ 登录状态变化时，加载数据
+// ✅ 登录状态变化时，加载数据 / 登出时立即跳转登录页（避免受保护视图在无布局下闪现）
 watch(() => auth.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     questionStore.init()
@@ -178,6 +178,8 @@ watch(() => auth.isLoggedIn, (loggedIn) => {
     wrongStore.init()
     examStore.loadRecords()
     aiStore.loadFromCloud()
+  } else if (route.path !== '/login') {
+    router.replace('/login')
   }
 }, { immediate: true })
 

@@ -8,12 +8,23 @@
 // 每次发布只需修改下方三个常量，并在 VERSION_HISTORY 追加一条记录。
 // ============================================================
 
-export const SYSTEM_VERSION = 'v1.0.1'
-export const VERSION_NAME = '安全加固与CI部署版'
+export const SYSTEM_VERSION = 'v1.0.2'
+export const VERSION_NAME = '前端稳定性修复版'
 export const BUILD_DATE = '2026-07-08'
 
 // 版本历史（新的在上）
 export const VERSION_HISTORY = [
+  {
+    version: 'v1.0.2',
+    date: '2026-07-08',
+    name: '前端稳定性修复版',
+    fixes: [
+      '修复未登录时清除/过期 token 导致的界面闪退（系统管理链接闪现后消失）',
+      '修复登出/会话失效时受保护视图在无布局下短暂闪现的问题',
+      '修复登录页回车触发两次 /auth/login 请求及由此产生的 net::ERR_ABORTED',
+      '增强暗色主题切换健壮性'
+    ]
+  },
   {
     version: 'v1.0.1',
     date: '2026-07-08',
