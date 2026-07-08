@@ -173,11 +173,12 @@ function toggleDark() {
 // ✅ 登录状态变化时，加载数据 / 登出时立即跳转登录页（避免受保护视图在无布局下闪现）
 watch(() => auth.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
+    // 各 store 数据加载互相独立：一个失败不阻断其他
     questionStore.init()
-    questionStore.fetchQuestions()
+    questionStore.fetchQuestions().catch(() => {})
     wrongStore.init()
-    examStore.loadRecords()
-    aiStore.loadFromCloud()
+    examStore.loadRecords().catch(() => {})
+    aiStore.loadFromCloud().catch(() => {})
   } else if (route.path !== '/login') {
     router.replace('/login')
   }

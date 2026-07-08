@@ -8,12 +8,22 @@
 // 每次发布只需修改下方三个常量，并在 VERSION_HISTORY 追加一条记录。
 // ============================================================
 
-export const SYSTEM_VERSION = 'v1.0.3'
-export const VERSION_NAME = 'Token校验与API防抖修复版'
+export const SYSTEM_VERSION = 'v1.0.4'
+export const VERSION_NAME = '数据接口容错修复版'
 export const BUILD_DATE = '2026-07-08'
 
 // 版本历史（新的在上）
 export const VERSION_HISTORY = [
+  {
+    version: 'v1.0.4',
+    date: '2026-07-08',
+    name: '数据接口容错修复版',
+    fixes: [
+      '【核心】api.js 401 处理策略重构：仅 /auth/* 认证接口的 401 才触发登出；数据接口（/exam/*、/ai/*、/questions 等）返回 401 时不破坏已登录会话，仅打警告日志',
+      'App.vue 数据加载隔离：每个 store.loadXxx() 加 .catch(() => {}) 防止单个接口失败阻断其他数据加载',
+      '解决登录后页面反复闪回登录页的问题（根因：部分数据接口返回 401 导致整个会话被误杀）'
+    ]
+  },
   {
     version: 'v1.0.3',
     date: '2026-07-08',
