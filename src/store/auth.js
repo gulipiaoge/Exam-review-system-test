@@ -75,24 +75,6 @@ async function login(username, password) {
     }
   } catch (err) {
     console.error('登录失败:', err)
-    // 模拟登录成功（用于测试）
-    if (username && password.length >= 6) {
-      const mockUser = {
-        id: `user_${Date.now()}`,
-        username,
-        email: `${username}@example.com`,
-        created_at: new Date().toISOString()
-      }
-      const mockToken = `mock_token_${Date.now()}`
-      
-      token.value = mockToken
-      user.value = mockUser
-      
-      localStorage.setItem('auth_token', mockToken)
-      localStorage.setItem('auth_user', JSON.stringify(mockUser))
-      
-      return mockUser
-    }
     throw err
   } finally {
     loading.value = false

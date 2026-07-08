@@ -23,9 +23,13 @@ const router = createRouter({
   routes
 })
 
-// 简单的认证检查：直接读取 localStorage
+// 认证检查：验证 token 存在且是合法 JWT 格式（三段式 base64url）
 function isAuthenticated() {
-  return !!localStorage.getItem('auth_token')
+  const token = localStorage.getItem('auth_token')
+  if (!token) return false
+  // 必须是 JWT 三段式格式（header.payload.signature），拒绝 mock_token 等非法格式
+  const parts = token.split('.')
+  return parts.length === 3 && parts.every(p => p.length > 0 && /^[A-Za-z0-9_-]+$/.test(p))
 }
 
 // 管理员判定：优先以 role 字段为准，兼容历史管理员账号 ksbg

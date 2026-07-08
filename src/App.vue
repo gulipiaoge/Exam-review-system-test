@@ -1,7 +1,12 @@
 <template>
   <div class="app-container">
+    <!-- 初始化中：不渲染任何内容（避免未登录闪现侧边栏） -->
+    <div v-if="!initialized" class="app-loading">
+      <div class="loading-spinner"></div>
+    </div>
+
     <!-- 未登录：只渲染登录页 -->
-    <router-view v-if="!auth.isLoggedIn" />
+    <router-view v-else-if="!auth.isLoggedIn" />
 
     <!-- 已登录：侧边栏 + 顶栏布局 -->
     <template v-else>
@@ -152,10 +157,12 @@ const toolNavItems = computed(() => {
 })
 
 const isDark = ref(false)
+const initialized = ref(false)
 
 onMounted(() => {
-  // ✅ 初始化认证状态（从 localStorage 恢复 token）
+  // ✅ 先完成认证初始化，再标记为已就绪（避免竞态条件）
   auth.init()
+  initialized.value = true
   
   const saved = localStorage.getItem('exam_dark_mode')
   if (saved === 'true') {
@@ -278,6 +285,23 @@ a { text-decoration: none; color: inherit; }
 /* ===== 4. 整体布局 ===== */
 .app-container { min-height: 100vh; }
 .app-layout { display: flex; min-height: 100vh; }
+
+/* 初始化加载态（避免未登录时闪现侧边栏） */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--primary-500);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== 5. 侧边栏 ===== */
 .sidebar {

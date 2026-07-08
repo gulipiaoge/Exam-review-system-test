@@ -8,12 +8,24 @@
 // 每次发布只需修改下方三个常量，并在 VERSION_HISTORY 追加一条记录。
 // ============================================================
 
-export const SYSTEM_VERSION = 'v1.0.4'
-export const VERSION_NAME = '数据接口容错修复版'
+export const SYSTEM_VERSION = 'v1.0.5'
+export const VERSION_NAME = '认证与权限修复版'
 export const BUILD_DATE = '2026-07-08'
 
 // 版本历史（新的在上）
 export const VERSION_HISTORY = [
+  {
+    version: 'v1.0.5',
+    date: '2026-07-08',
+    name: '认证与权限修复版',
+    fixes: [
+      '【致命】删除 auth.js mock 登录回退：API 失败时不再允许任意账号伪造登录（此前任何密码≥6位都能绕过认证）',
+      '【致命】路由守卫增强校验：isAuthenticated() 现在验证 JWT 三段式格式，mock_token / 旧格式 token 不再通过守卫',
+      '【严重】App.vue 新增 initialized 初始化状态：auth.init() 完成前不渲染布局（消除登录页+侧边栏同时闪烁的竞态条件）',
+      '【中等】AppFooter "系统管理"链接增加权限控制：仅管理员用户可见',
+      '彻底修复未登录状态可访问全部功能页面的系统级漏洞'
+    ]
+  },
   {
     version: 'v1.0.4',
     date: '2026-07-08',
