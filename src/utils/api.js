@@ -2,31 +2,20 @@
 
 // 自动检测 API 基础地址
 function getBaseUrl() {
-  // 如果是从 Cloudflare Pages 访问，使用同一个域名的 /api 路径
-  // Pages Functions 会自动处理 /api/* 路由
   if (window.location.hostname !== 'localhost') {
     return '/api'
   }
-  // 本地开发时使用 localhost:3000
   return 'http://localhost:3000/api'
 }
 
 const BASE_URL = getBaseUrl()
 
-// 延迟导入避免循环依赖和初始化顺序问题
-function getAuthStore() {
-  try {
-    const { useAuthStore } = require('../store/auth') || {}
-    if (useAuthStore) return useAuthStore()
-  } catch(e) { /* ignore */ }
-  // fallback: 直接从localStorage读
-  return { token: localStorage.getItem('auth_token') || '' }
-}
+// ── 401 全局防抖：多个并发请求同时收到 401 时，只执行一次登出跳转 ──
+let _handling401 = false
 
 async function request(url, options = {}) {
   let authToken = ''
   try {
-    // 动态import避免循环依赖
     const { useAuthStore: _useAuth } = await import('../store/auth.js')
     const authStore = _useAuth()
     authToken = authStore.token || ''
@@ -39,7 +28,6 @@ async function request(url, options = {}) {
     ...options.headers
   }
 
-  // 添加 token 到请求头
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`
   }
@@ -56,11 +44,12 @@ async function request(url, options = {}) {
     const data = await response.json()
     console.log(`[API] 响应 ${fullUrl}:`, typeof data, Array.isArray(data.questions) ? `questions=${data.questions.length}` : data.error || data.code || JSON.stringify(data).slice(0,200))
 
-    // 如果 token 过期或无效，自动登出（登录接口除外）
+    // ── 401 处理（带全局防抖，避免并发请求重复登出）──
     if (data.code === 401 || (data.error && data.error.includes('未登录'))) {
       const isLoginRequest = url.includes('/auth/login')
-      if (!isLoginRequest) {
-        console.warn('[API] Token无效，清除登录状态')
+      if (!isLoginRequest && !_handling401) {
+        _handling401 = true
+        console.warn('[API] Token无效，清除登录状态（防抖已激活）')
         try {
           const { useAuthStore: _useAuth2 } = await import('../store/auth.js')
           _useAuth2().logout()
@@ -68,7 +57,8 @@ async function request(url, options = {}) {
           localStorage.removeItem('auth_user')
           localStorage.removeItem('auth_token')
         }
-        window.location.href = '/login'
+        // 使用 replace 而非 href，避免浏览器历史堆积
+        window.location.replace('/login')
       }
       return data
     }
@@ -76,7 +66,6 @@ async function request(url, options = {}) {
     return data
   } catch (error) {
     console.warn('[API] 请求失败:', url, error.message)
-    // 返回空结果而不是抛出异常，让页面可以继续渲染
     return { code: 0, message: '网络连接失败', data: null }
   }
 }
@@ -99,6 +88,11 @@ export default {
   },
   delete(url) {
     return request(url, { method: 'DELETE' })
+  },
+
+  // 登录成功后重置 401 防抖标志（供 auth.login 调用）
+  reset401Guard() {
+    _handling401 = false
   },
 
   // 检查后端是否可用

@@ -8,12 +8,25 @@
 // 每次发布只需修改下方三个常量，并在 VERSION_HISTORY 追加一条记录。
 // ============================================================
 
-export const SYSTEM_VERSION = 'v1.0.2'
-export const VERSION_NAME = '前端稳定性修复版'
+export const SYSTEM_VERSION = 'v1.0.3'
+export const VERSION_NAME = 'Token校验与API防抖修复版'
 export const BUILD_DATE = '2026-07-08'
 
 // 版本历史（新的在上）
 export const VERSION_HISTORY = [
+  {
+    version: 'v1.0.3',
+    date: '2026-07-08',
+    name: 'Token校验与API防抖修复版',
+    fixes: [
+      '修复 Token 无效/过期时多个 API 并发请求同时触发登出（401 防抖机制）',
+      '加强 getTokenExp() 对非 JWT 格式 token 的识别（旧 mock_token 等残留直接清除）',
+      '修复 <meta name="apple-mobile-web-app-capable"> 弃用警告（改用 mobile-web-app-capable）',
+      '补充 PWA manifest 缺失的图标文件（icon-192/512.png）',
+      'API 401 跳转改用 location.replace 避免浏览器历史堆积',
+      '移除 api.js 中未使用的 getAuthStore 死代码'
+    ]
+  },
   {
     version: 'v1.0.2',
     date: '2026-07-08',

@@ -9,17 +9,19 @@ const loading = ref(false)
 // 计算属性：是否已登录
 const isLoggedIn = computed(() => !!token.value)
 
-// 解析 JWT 中的 exp（单位：秒）。解析失败返回 null（保守地视为“无过期信息”）。
+// 解析 JWT 中的 exp（单位：秒）。
+// 返回值：exp 时间戳（秒），或 0 表示"肯定无效"，null 表示"无法判断（保守）"
 function getTokenExp(token) {
   try {
-    const part = token.split('.')[1]
-    if (!part) return null
-    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    // 非 JWT 三段式格式 → 肯定无效（如 mock_token_xxx 等旧残留）
+    const parts = token.split('.')
+    if (parts.length !== 3) return 0
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
     const raw = atob(b64)
     const m = raw.match(/"exp"\s*:\s*(\d+)/)
-    return m ? parseInt(m[1], 10) : null
+    return m ? parseInt(m[1], 10) : 0
   } catch {
-    return null
+    return 0
   }
 }
 
@@ -30,11 +32,14 @@ function init() {
 
   if (savedToken) {
     const exp = getTokenExp(savedToken)
-    // 仅当能确认已过期时才清理，避免以“已登录”态短暂闪现后消失（未登录闪退）
-    if (exp !== null && exp * 1000 <= Date.now()) {
+    // exp === 0 表示格式非法或无法解析 → 直接清除
+    // exp > 0 且已过期 → 清除
+    // 仅当 exp 为合法未来时间时保留 token
+    if (exp === 0 || (exp > 0 && exp * 1000 <= Date.now())) {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_user')
-    } else {
+      // 不设置 token.value，保持未登录状态
+    } else if (exp > 0) {
       token.value = savedToken
     }
   }
@@ -53,14 +58,17 @@ async function login(username, password) {
   loading.value = true
   try {
     const res = await api.post('/auth/login', { username, password })
-    
+
     if (res?.token) {
       token.value = res.token
       user.value = res.user
-      
+
       localStorage.setItem('auth_token', res.token)
       localStorage.setItem('auth_user', JSON.stringify(res.user))
-      
+
+      // 登录成功，重置 401 防抖标志
+      api.reset401Guard()
+
       return res.user
     } else {
       throw new Error(res?.error || '登录失败')
